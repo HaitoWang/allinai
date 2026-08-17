@@ -1903,7 +1903,8 @@ const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
       };
     }
   })`
-  const providerName = (publicSettings.value?.site_name || 'sub2api').trim() || 'sub2api'
+  const configuredSiteName = publicSettings.value?.site_name?.trim()
+  const providerName = configuredSiteName && configuredSiteName !== 'Sub2API' ? configuredSiteName : 'allinai'
   const deeplink = buildCcSwitchImportDeeplink({
     baseUrl,
     platform,

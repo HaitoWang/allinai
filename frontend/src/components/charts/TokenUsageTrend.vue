@@ -1,6 +1,6 @@
 <template>
-  <div class="card p-4">
-    <h3 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
+  <div :class="embedded ? 'dashboard-analytics-panel' : 'card p-4'">
+    <h3 :class="embedded ? 'dashboard-panel-title' : 'mb-4 text-sm font-semibold text-gray-900 dark:text-white'">
       {{ t('admin.dashboard.tokenUsageTrend') }}
     </h3>
     <div v-if="loading" class="flex h-48 items-center justify-center">
@@ -52,6 +52,7 @@ const { t } = useI18n()
 const props = defineProps<{
   trendData: TrendDataPoint[]
   loading?: boolean
+  embedded?: boolean
 }>()
 
 const isDarkMode = computed(() => {
@@ -59,13 +60,13 @@ const isDarkMode = computed(() => {
 })
 
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#e5e7eb' : '#374151',
-  grid: isDarkMode.value ? '#374151' : '#e5e7eb',
-  input: '#3b82f6',
-  output: '#10b981',
-  cacheCreation: '#f59e0b',
-  cacheRead: '#06b6d4',
-  cacheHitRate: '#8b5cf6'
+  text: isDarkMode.value ? '#9299a6' : '#667085',
+  grid: isDarkMode.value ? 'rgba(255,255,255,0.07)' : 'rgba(15,23,42,0.08)',
+  input: '#ef3f68',
+  output: '#4f8cff',
+  cacheCreation: '#e8b45d',
+  cacheRead: '#40b892',
+  cacheHitRate: '#a97ad8'
 }))
 
 const chartData = computed(() => {
@@ -80,7 +81,9 @@ const chartData = computed(() => {
         borderColor: chartColors.value.input,
         backgroundColor: `${chartColors.value.input}20`,
         fill: true,
-        tension: 0.3
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 0
       },
       {
         label: 'Output',
@@ -88,23 +91,29 @@ const chartData = computed(() => {
         borderColor: chartColors.value.output,
         backgroundColor: `${chartColors.value.output}20`,
         fill: true,
-        tension: 0.3
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 0
       },
       {
         label: 'Cache Creation',
         data: props.trendData.map((d) => d.cache_creation_tokens),
         borderColor: chartColors.value.cacheCreation,
         backgroundColor: `${chartColors.value.cacheCreation}20`,
-        fill: true,
-        tension: 0.3
+        fill: false,
+        tension: 0.35,
+        borderWidth: 1.5,
+        pointRadius: 0
       },
       {
         label: 'Cache Read',
         data: props.trendData.map((d) => d.cache_read_tokens),
         borderColor: chartColors.value.cacheRead,
         backgroundColor: `${chartColors.value.cacheRead}20`,
-        fill: true,
-        tension: 0.3
+        fill: false,
+        tension: 0.35,
+        borderWidth: 1.5,
+        pointRadius: 0
       },
       {
         label: 'Cache Hit Rate',
@@ -116,7 +125,9 @@ const chartData = computed(() => {
         backgroundColor: `${chartColors.value.cacheHitRate}20`,
         borderDash: [5, 5],
         fill: false,
-        tension: 0.3,
+        tension: 0.35,
+        borderWidth: 1.5,
+        pointRadius: 0,
         yAxisID: 'yPercent'
       }
     ]
@@ -226,3 +237,24 @@ const formatCost = (value: number): string => {
   return value.toFixed(4)
 }
 </script>
+
+<style scoped>
+.dashboard-analytics-panel {
+  min-width: 0;
+  min-height: 268px;
+  padding: 1.25rem;
+}
+
+.dashboard-panel-title {
+  margin-bottom: 1.25rem;
+  color: var(--app-text);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+@media (max-width: 639px) {
+  .dashboard-analytics-panel {
+    padding: 1rem;
+  }
+}
+</style>

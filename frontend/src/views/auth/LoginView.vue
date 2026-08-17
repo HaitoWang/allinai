@@ -1,26 +1,16 @@
 <template>
-  <AuthLayout>
-    <div class="space-y-6">
-      <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {{ t('auth.welcomeBack') }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
-          {{ t('auth.signInToAccount') }}
-        </p>
+  <ImmersiveAuthLayout>
+    <div class="codium-login-content">
+      <div class="codium-login-heading">
+        <h2>{{ t('auth.welcomeBack') }}</h2>
+        <p>{{ t('auth.signInToAccount') }}</p>
       </div>
-      <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-5">
-        <!-- Email Input -->
-        <div>
-          <label for="email" class="input-label">
-            {{ t('auth.emailLabel') }}
-          </label>
-          <div class="relative">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
-            </div>
+
+      <form class="codium-auth-form" @submit.prevent="handleLogin">
+        <label class="codium-field" for="email">
+          <span>{{ t('auth.emailLabel') }}</span>
+          <span class="codium-input-shell" :class="{ 'has-error': errors.email }">
+            <Icon name="mail" size="sm" />
             <input
               id="email"
               v-model="formData.email"
@@ -28,58 +18,46 @@
               required
               autofocus
               autocomplete="email"
-              :disabled="authActionDisabled"
-              class="input pl-11"
-              :class="{ 'input-error': errors.email }"
+              :disabled="credentialFieldsDisabled"
               :placeholder="t('auth.emailPlaceholder')"
             />
-          </div>
-        </div>
+          </span>
+        </label>
 
-        <!-- Password Input -->
-        <div>
-          <label for="password" class="input-label">
-            {{ t('auth.passwordLabel') }}
-          </label>
-          <div class="relative">
-            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
-            </div>
+        <label class="codium-field" for="password">
+          <span class="codium-field-heading">
+            <span>{{ t('auth.passwordLabel') }}</span>
+            <router-link
+              v-if="passwordResetEnabled && !backendModeEnabled"
+              to="/forgot-password"
+            >
+              {{ t('auth.forgotPassword') }}
+            </router-link>
+          </span>
+          <span class="codium-input-shell" :class="{ 'has-error': errors.password }">
+            <Icon name="lock" size="sm" />
             <input
               id="password"
               v-model="formData.password"
               :type="showPassword ? 'text' : 'password'"
               required
               autocomplete="current-password"
-              :disabled="authActionDisabled"
-              class="input pl-11 pr-11"
-              :class="{ 'input-error': errors.password }"
+              :disabled="credentialFieldsDisabled"
               :placeholder="t('auth.passwordPlaceholder')"
             />
             <button
               type="button"
+              class="codium-password-toggle"
+              :disabled="credentialFieldsDisabled"
+              :aria-label="showPassword ? t('auth.hidePassword') : t('auth.showPassword')"
               @click="showPassword = !showPassword"
-              :disabled="authActionDisabled"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
-              <Icon v-if="showPassword" name="eyeOff" size="md" />
-              <Icon v-else name="eye" size="md" />
+              <Icon :name="showPassword ? 'eyeOff' : 'eye'" size="sm" />
             </button>
-          </div>
-          <div class="mt-1 flex items-center justify-between">
-            <span></span>
-            <router-link
-              v-if="passwordResetEnabled && !backendModeEnabled"
-              to="/forgot-password"
-              class="text-sm font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
-            >
-              {{ t('auth.forgotPassword') }}
-            </router-link>
-          </div>
-        </div>
+          </span>
+        </label>
 
-        <!-- Turnstile Widget -->
-        <div v-if="captchaEnabled">
+        <div v-if="captchaEnabled" class="codium-captcha">
           <TurnstileWidget
             ref="turnstileRef"
             :turnstile-enabled="turnstileEnabled"
@@ -97,38 +75,9 @@
           />
         </div>
 
-        <!-- Submit Button -->
-        <button
-          type="submit"
-          :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
-        >
-          <svg
-            v-if="isLoading"
-            class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            ></circle>
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          <Icon v-else name="login" size="md" class="mr-2" />
-          {{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}
-        </button>
-
         <LoginAgreementPrompt
           v-if="loginAgreementEnabled"
+          class="codium-agreement"
           :accepted="agreementAccepted"
           :documents="loginAgreementDocuments"
           :mode="loginAgreementMode"
@@ -139,76 +88,82 @@
           @open="showAgreementModal = true"
         />
 
-        <div v-if="showPasskeyLogin || showOAuthLogin" class="space-y-3 pt-1">
-          <div class="flex items-center gap-3">
-            <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-            <span class="text-xs text-gray-500 dark:text-dark-400">
-              {{ t('auth.oauthOrContinue') }}
-            </span>
-            <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+        <button
+          type="submit"
+          class="codium-submit"
+          :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
+        >
+          <span>{{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}</span>
+          <svg v-if="isLoading" class="codium-spinner" fill="none" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+            <path fill="currentColor" d="M21 12a9 9 0 00-9-9v3a6 6 0 016 6h3z" />
+          </svg>
+          <Icon v-else name="arrowRight" size="sm" />
+        </button>
+
+        <div v-if="showPasskeyLogin || showOAuthLogin" class="codium-alternatives">
+          <div class="codium-divider">
+            <span></span>
+            <small>{{ t('auth.oauthOrContinue') }}</small>
+            <span></span>
           </div>
 
           <button
             v-if="showPasskeyLogin"
             type="button"
-            class="btn btn-secondary w-full"
+            class="codium-secondary-button btn-secondary w-full"
             :disabled="authActionDisabled"
             @click="handlePasskeyLogin"
           >
-            <Icon name="key" size="md" class="mr-2" />
+            <Icon name="key" size="sm" />
             {{ passkeyLoading ? t('auth.passkeySigningIn') : t('auth.passkeySignIn') }}
           </button>
 
-          <EmailOAuthButtons
-            :disabled="authActionDisabled"
-            :github-enabled="githubOAuthEnabled"
-            :google-enabled="googleOAuthEnabled"
-            :show-divider="false"
-            @start="handleOAuthStart"
-          />
-
-          <LinuxDoOAuthSection
-            v-if="linuxdoOAuthEnabled"
-            :disabled="authActionDisabled"
-            :show-divider="false"
-            @start="handleOAuthStart"
-          />
-          <DingTalkOAuthSection
-            v-if="dingtalkOAuthEnabled"
-            :disabled="authActionDisabled"
-            :show-divider="false"
-            @start="handleOAuthStart"
-          />
-          <WechatOAuthSection
-            v-if="wechatOAuthEnabled"
-            :disabled="authActionDisabled"
-            :show-divider="false"
-            @start="handleOAuthStart"
-          />
-          <OidcOAuthSection
-            v-if="oidcOAuthEnabled"
-            :disabled="authActionDisabled"
-            :provider-name="oidcOAuthProviderName"
-            :show-divider="false"
-            @start="handleOAuthStart"
-          />
+          <div class="codium-oauth-providers">
+            <EmailOAuthButtons
+              :disabled="authActionDisabled"
+              :github-enabled="githubOAuthEnabled"
+              :google-enabled="googleOAuthEnabled"
+              :show-divider="false"
+              @start="handleOAuthStart"
+            />
+            <LinuxDoOAuthSection
+              v-if="linuxdoOAuthEnabled"
+              :disabled="authActionDisabled"
+              :show-divider="false"
+              @start="handleOAuthStart"
+            />
+            <DingTalkOAuthSection
+              v-if="dingtalkOAuthEnabled"
+              :disabled="authActionDisabled"
+              :show-divider="false"
+              @start="handleOAuthStart"
+            />
+            <WechatOAuthSection
+              v-if="wechatOAuthEnabled"
+              :disabled="authActionDisabled"
+              :show-divider="false"
+              @start="handleOAuthStart"
+            />
+            <OidcOAuthSection
+              v-if="oidcOAuthEnabled"
+              :disabled="authActionDisabled"
+              :provider-name="oidcOAuthProviderName"
+              :show-divider="false"
+              @start="handleOAuthStart"
+            />
+          </div>
         </div>
       </form>
     </div>
 
-    <!-- Footer -->
     <template v-if="!backendModeEnabled" #footer>
-      <p class="text-gray-500 dark:text-dark-400">
+      <p>
         {{ t('auth.dontHaveAccount') }}
-        <router-link
-          to="/register"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
-        >
-          {{ t('auth.signUp') }}
-        </router-link>
+        <router-link to="/register">{{ t('auth.signUp') }}</router-link>
       </p>
     </template>
-  </AuthLayout>
+  </ImmersiveAuthLayout>
 
   <!-- 2FA Modal -->
   <TotpLoginModal
@@ -225,7 +180,7 @@
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { AuthLayout } from '@/components/layout'
+import { ImmersiveAuthLayout } from '@/components/layout'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import DingTalkOAuthSection from '@/components/auth/DingTalkOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
@@ -345,6 +300,14 @@ const agreementGateActive = computed(
 
 const authActionDisabled = computed(
   () => isLoading.value || passkeyLoading.value || !publicSettingsLoaded.value || agreementGateActive.value
+)
+
+const credentialFieldsDisabled = computed(
+  () =>
+    isLoading.value ||
+    passkeyLoading.value ||
+    !publicSettingsLoaded.value ||
+    (agreementGateActive.value && loginAgreementMode.value !== 'checkbox')
 )
 
 const showPasskeyLogin = computed(
@@ -732,6 +695,282 @@ function handle2FACancel(): void {
 </script>
 
 <style scoped>
+.codium-login-content {
+  width: 100%;
+}
+
+.codium-login-heading h2 {
+  margin: 0;
+  color: var(--auth-text);
+  font-size: 2.55rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+.codium-login-heading p {
+  margin: 0.65rem 0 0;
+  color: var(--auth-muted);
+  font-size: 0.95rem;
+}
+
+.codium-auth-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.codium-field {
+  display: grid;
+  gap: 0.55rem;
+  color: var(--auth-label);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.codium-field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.codium-field-heading a {
+  color: var(--auth-link);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.codium-field-heading a:hover {
+  color: #ff6b8f;
+}
+
+.codium-input-shell {
+  display: flex;
+  min-height: 3.35rem;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0 0.95rem;
+  color: var(--auth-muted);
+  background: var(--auth-control-bg);
+  border: 1px solid var(--auth-border);
+  border-radius: 8px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.codium-input-shell:focus-within {
+  background: var(--auth-control-bg-active);
+  border-color: var(--auth-border-strong);
+}
+
+.codium-input-shell.has-error {
+  border-color: rgba(255, 81, 119, 0.72);
+}
+
+.codium-input-shell input {
+  width: 100%;
+  min-width: 0;
+  height: 3.2rem;
+  padding: 0;
+  color: var(--auth-input-text);
+  caret-color: var(--auth-input-text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.codium-input-shell input::placeholder {
+  color: var(--auth-input-placeholder);
+}
+
+.codium-input-shell input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.codium-input-shell input:-webkit-autofill,
+.codium-input-shell input:-webkit-autofill:hover,
+.codium-input-shell input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--auth-input-text);
+  caret-color: var(--auth-input-text);
+  transition: background-color 9999s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px var(--auth-autofill-bg) inset;
+}
+
+.codium-password-toggle {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  color: var(--auth-link);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.codium-password-toggle:hover {
+  color: var(--auth-text);
+  background: var(--auth-hover-bg);
+}
+
+.codium-captcha {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.codium-submit,
+.codium-secondary-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 3.35rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 750;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.codium-submit {
+  min-height: 3.65rem;
+  color: #fff;
+  background: linear-gradient(135deg, #ff4f79 0%, #ef3f68 56%, #e82f5b 100%);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 1rem 2.4rem rgba(239, 63, 104, 0.26), 0 0 1.8rem rgba(239, 63, 104, 0.12);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.codium-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff6389 0%, #f54870 56%, #ef3f68 100%);
+  box-shadow: 0 1.15rem 2.8rem rgba(239, 63, 104, 0.32), 0 0 2rem rgba(239, 63, 104, 0.16);
+  transform: translateY(-1px);
+}
+
+.codium-submit:disabled {
+  cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.58);
+  background: rgba(239, 63, 104, 0.3);
+  border: 0;
+  box-shadow: 0 0.75rem 1.8rem rgba(239, 63, 104, 0.1);
+}
+
+.codium-secondary-button:disabled {
+  cursor: not-allowed;
+  color: var(--auth-disabled-text);
+  background: var(--auth-disabled-bg);
+  border-color: var(--auth-border);
+  box-shadow: none;
+}
+
+.codium-spinner {
+  width: 1rem;
+  height: 1rem;
+  animation: spin 0.8s linear infinite;
+}
+
+.codium-spinner circle {
+  opacity: 0.25;
+}
+
+.codium-alternatives {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.1rem;
+}
+
+.codium-divider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.codium-divider span {
+  height: 1px;
+  background: var(--auth-border);
+}
+
+.codium-divider small {
+  color: var(--auth-subtle);
+  font-size: 0.72rem;
+}
+
+.codium-secondary-button {
+  color: var(--auth-secondary-text);
+  background: var(--auth-control-bg);
+  border: 1px solid var(--auth-border);
+}
+
+.codium-secondary-button:hover:not(:disabled) {
+  color: var(--auth-text);
+  background: var(--auth-control-bg-active);
+  border-color: var(--auth-border-strong);
+}
+
+.codium-oauth-providers {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.codium-oauth-providers :deep(.btn-secondary) {
+  min-height: 3rem;
+  color: var(--auth-secondary-text);
+  background: var(--auth-control-bg);
+  border-color: var(--auth-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.codium-oauth-providers :deep(.btn-secondary:hover:not(:disabled)) {
+  color: var(--auth-text);
+  background: var(--auth-control-bg-active);
+  border-color: var(--auth-border-strong);
+}
+
+.codium-oauth-providers :deep(.btn-secondary svg) {
+  color: currentColor;
+}
+
+.codium-agreement :deep(p),
+.codium-agreement :deep(label) {
+  color: var(--auth-muted) !important;
+}
+
+.codium-agreement :deep(a) {
+  color: var(--auth-text) !important;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.codium-agreement :deep(a:hover) {
+  color: #ff6b8f !important;
+  text-decoration: underline;
+}
+
+:deep(.immersive-auth-footer a) {
+  margin-left: 0.25rem;
+  color: var(--auth-secondary-text);
+  font-weight: 650;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+:deep(.immersive-auth-footer a:hover) {
+  color: #ff6b8f;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.3s ease;
@@ -741,5 +980,15 @@ function handle2FACancel(): void {
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (max-width: 620px) {
+  .codium-login-heading h2 {
+    font-size: 2.1rem;
+  }
+
+  .codium-auth-form {
+    margin-top: 1.5rem;
+  }
 }
 </style>
