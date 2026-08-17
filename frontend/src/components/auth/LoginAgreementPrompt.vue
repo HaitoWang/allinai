@@ -1,21 +1,26 @@
 <template>
   <div
     v-if="mode === 'checkbox' && documents.length > 0"
-    class="px-0.5"
+    class="login-agreement-checkbox"
   >
-    <div class="flex items-start gap-2">
-      <input
-        id="login-agreement-consent"
-        type="checkbox"
-        :checked="accepted"
-        class="mt-[2px] h-4 w-4 flex-shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-900"
-        @change="handleCheckboxChange"
-      />
-      <div class="min-w-0 flex-1">
-        <p class="text-[13px] leading-5 text-gray-600 dark:text-dark-300">
+    <div class="login-agreement-row">
+      <label class="login-agreement-control" for="login-agreement-consent">
+        <input
+          id="login-agreement-consent"
+          type="checkbox"
+          :checked="accepted"
+          class="login-agreement-input"
+          @change="handleCheckboxChange"
+        />
+        <span class="login-agreement-box" aria-hidden="true">
+          <Icon v-if="accepted" name="check" size="sm" />
+        </span>
+      </label>
+      <div class="login-agreement-copy-wrap">
+        <p class="login-agreement-copy">
           <label
             for="login-agreement-consent"
-            class="cursor-pointer text-gray-700 dark:text-dark-200"
+            class="login-agreement-prefix"
           >
             {{ t('legal.loginAgreementPrompt.checkboxPrefix') }}
           </label>
@@ -24,7 +29,7 @@
               :to="documentRoute(doc)"
               target="_blank"
               rel="noopener noreferrer"
-              class="font-medium text-primary-600 underline-offset-4 transition hover:text-primary-700 hover:underline dark:text-primary-300 dark:hover:text-primary-200"
+              class="login-agreement-link"
             >
               {{ doc.title }}
             </RouterLink>
@@ -216,6 +221,97 @@ function documentIcon(index: number, title: string): 'document' | 'shield' | 'gl
 </script>
 
 <style scoped>
+.login-agreement-checkbox {
+  padding: 0.1rem 0.15rem;
+}
+
+.login-agreement-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.login-agreement-control {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  cursor: pointer;
+}
+
+.login-agreement-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-agreement-box {
+  display: grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  place-items: center;
+  color: transparent;
+  background: transparent;
+  border: 1px solid var(--auth-border-strong, rgba(107, 114, 128, 0.58));
+  border-radius: 0.36rem;
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.login-agreement-box :deep(svg) {
+  width: 0.92rem;
+  height: 0.92rem;
+  stroke-width: 3;
+}
+
+.login-agreement-input:checked + .login-agreement-box {
+  color: #111317;
+  background: #f7f8fa;
+  border-color: #f7f8fa;
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.14);
+}
+
+.login-agreement-input:focus-visible + .login-agreement-box {
+  outline: 2px solid #ef3f68;
+  outline-offset: 3px;
+}
+
+.login-agreement-copy-wrap {
+  min-width: 0;
+  flex: 1;
+}
+
+.login-agreement-copy {
+  margin: 0;
+  color: var(--auth-muted, #6b7280);
+  font-size: 0.8rem;
+  line-height: 1.65;
+}
+
+.login-agreement-prefix {
+  cursor: pointer;
+}
+
+.login-agreement-link {
+  color: var(--auth-secondary-text, #4b5563);
+  font-weight: 600;
+  text-decoration: none;
+  text-underline-offset: 0.24rem;
+  white-space: nowrap;
+  transition: color 0.18s ease;
+}
+
+.login-agreement-prefix + .login-agreement-link {
+  margin-left: 0.3em;
+}
+
+.login-agreement-link:hover {
+  color: #ef3f68;
+  text-decoration: underline;
+}
+
 .agreement-fade-enter-active,
 .agreement-fade-leave-active {
   transition: opacity 0.18s ease;

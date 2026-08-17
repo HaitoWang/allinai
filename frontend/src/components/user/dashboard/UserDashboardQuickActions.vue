@@ -1,12 +1,12 @@
 <template>
-  <div class="card">
-    <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('dashboard.quickActions') }}</h2>
+  <div class="card h-full overflow-hidden">
+    <div class="flex min-h-[64px] items-center border-b border-gray-100 px-5 py-3 dark:border-dark-700">
+      <h2 class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('dashboard.quickActions') }}</h2>
     </div>
-    <div class="space-y-3 p-4">
-      <button @click="router.push('/keys')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-100 transition-transform group-hover:scale-105 dark:bg-primary-900/30">
-          <Icon name="key" size="lg" class="text-primary-600 dark:text-primary-400" />
+    <div class="divide-y divide-gray-100 dark:divide-dark-700">
+      <button @click="router.push('/keys')" class="dashboard-action-row group">
+        <div class="dashboard-action-icon">
+          <Icon name="key" size="sm" />
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.createApiKey') }}</p>
@@ -14,14 +14,14 @@
         </div>
         <Icon
           name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-primary-500 dark:text-dark-500"
+          size="sm"
+          class="text-gray-400 transition-colors group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-white"
         />
       </button>
 
-      <button @click="router.push('/usage')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 transition-transform group-hover:scale-105 dark:bg-emerald-900/30">
-          <Icon name="chart" size="lg" class="text-emerald-600 dark:text-emerald-400" />
+      <button @click="router.push('/usage')" class="dashboard-action-row group">
+        <div class="dashboard-action-icon">
+          <Icon name="chart" size="sm" />
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.viewUsage') }}</p>
@@ -29,14 +29,14 @@
         </div>
         <Icon
           name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-emerald-500 dark:text-dark-500"
+          size="sm"
+          class="text-gray-400 transition-colors group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-white"
         />
       </button>
 
-      <button v-if="canUseBatchImage" @click="router.push('/batch-image')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-sky-100 transition-transform group-hover:scale-105 dark:bg-sky-900/30">
-          <Icon name="sparkles" size="lg" class="text-sky-600 dark:text-sky-400" />
+      <button v-if="canUseBatchImage" @click="router.push('/batch-image')" class="dashboard-action-row group">
+        <div class="dashboard-action-icon">
+          <Icon name="sparkles" size="sm" />
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.batchImageAgent') }}</p>
@@ -44,14 +44,14 @@
         </div>
         <Icon
           name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-sky-500 dark:text-dark-500"
+          size="sm"
+          class="text-gray-400 transition-colors group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-white"
         />
       </button>
 
-      <button @click="router.push('/redeem')" class="group flex w-full items-center gap-4 rounded-xl bg-gray-50 p-4 text-left transition-all duration-200 hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800">
-        <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-100 transition-transform group-hover:scale-105 dark:bg-amber-900/30">
-          <Icon name="gift" size="lg" class="text-amber-600 dark:text-amber-400" />
+      <button @click="router.push('/redeem')" class="dashboard-action-row group">
+        <div class="dashboard-action-icon">
+          <Icon name="gift" size="sm" />
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-medium text-gray-900 dark:text-white">{{ t('dashboard.redeemCode') }}</p>
@@ -59,8 +59,8 @@
         </div>
         <Icon
           name="chevronRight"
-          size="md"
-          class="text-gray-400 transition-colors group-hover:text-amber-500 dark:text-dark-500"
+          size="sm"
+          class="text-gray-400 transition-colors group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-white"
         />
       </button>
     </div>
@@ -81,3 +81,38 @@ onMounted(() => {
   void refreshBatchImageAccess()
 })
 </script>
+
+<style scoped>
+.dashboard-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 68px;
+  padding: 0.75rem 1.25rem;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.dashboard-action-row:hover {
+  background: var(--app-surface-raised);
+}
+
+.dashboard-action-icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  color: var(--app-muted);
+  background: var(--app-surface-raised);
+}
+
+.dashboard-action-row:hover .dashboard-action-icon {
+  color: var(--app-accent);
+  border-color: var(--app-border-strong);
+}
+</style>

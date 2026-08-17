@@ -12,6 +12,7 @@ export default {
     performance: '性能指标',
     avgResponse: '平均响应',
     averageTime: '平均时间',
+    usageOverview: '用量分析',
     timeRange: '时间范围',
     granularity: '粒度',
     day: '按天',

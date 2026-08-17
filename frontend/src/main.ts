@@ -26,7 +26,8 @@ function initThemeClass() {
   const savedTheme = localStorage.getItem('theme')
   const shouldUseDark =
     savedTheme === 'dark' ||
-    (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    // The application shell is intentionally dark-first; users can still opt into light mode.
+    !savedTheme
   document.documentElement.classList.toggle('dark', shouldUseDark)
 }
 
@@ -44,10 +45,8 @@ async function bootstrap() {
   const appStore = useAppStore()
   appStore.initFromInjectedConfig()
 
-  // Set document title immediately after config is loaded
-  if (appStore.siteName && appStore.siteName !== 'Sub2API') {
-    document.title = `${appStore.siteName} - AI API Gateway`
-  }
+  // Set document title immediately after config is loaded.
+  document.title = `${appStore.siteName || 'allinai'} - AI Gateway`
   updateFavicon(appStore.siteLogo)
 
   await initI18n()
