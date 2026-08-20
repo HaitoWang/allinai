@@ -46,6 +46,11 @@
   html {
     @apply scroll-smooth antialiased;
     background: var(--app-bg);
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
   }
 
   body {

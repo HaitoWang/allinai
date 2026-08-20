@@ -55,7 +55,7 @@
           </div>
           <p class="dashboard-metric-value dashboard-metric-value-secondary">{{ formatTokens(stats?.today_tokens || 0) }}</p>
           <p class="dashboard-metric-meta">
-            {{ t('dashboard.input') }} {{ formatTokens(stats?.today_input_tokens || 0) }} · {{ t('dashboard.output') }} {{ formatTokens(stats?.today_output_tokens || 0) }}
+            {{ t('dashboard.input') }} {{ formatTokens(stats?.today_input_tokens || 0) }} · {{ t('dashboard.output') }} {{ formatTokens(stats?.today_output_tokens || 0) }} · {{ t('dashboard.cache') }} {{ formatTokens((stats?.today_cache_creation_tokens || 0) + (stats?.today_cache_read_tokens || 0)) }}
           </p>
         </article>
 
@@ -66,7 +66,7 @@
           </div>
           <p class="dashboard-metric-value dashboard-metric-value-secondary">{{ formatTokens(stats?.total_tokens || 0) }}</p>
           <p class="dashboard-metric-meta">
-            {{ t('dashboard.input') }} {{ formatTokens(stats?.total_input_tokens || 0) }} · {{ t('dashboard.output') }} {{ formatTokens(stats?.total_output_tokens || 0) }}
+            {{ t('dashboard.input') }} {{ formatTokens(stats?.total_input_tokens || 0) }} · {{ t('dashboard.output') }} {{ formatTokens(stats?.total_output_tokens || 0) }} · {{ t('dashboard.cache') }} {{ formatTokens((stats?.total_cache_creation_tokens || 0) + (stats?.total_cache_read_tokens || 0)) }}
           </p>
         </article>
 
