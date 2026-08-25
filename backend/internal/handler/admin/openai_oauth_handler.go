@@ -279,6 +279,7 @@ func (h *OpenAIOAuthHandler) RefreshAccountToken(c *gin.Context) {
 		}
 	}
 	newCredentials = service.NormalizeOpenAIPersonalAccessTokenCredentials(account, tokenInfo, newCredentials)
+	newCredentials = service.PreserveOpenAITeamCredentialOverrides(account, newCredentials)
 
 	updatedAccount, err := h.adminService.UpdateAccount(c.Request.Context(), accountID, &service.UpdateAccountInput{
 		Credentials: newCredentials,
