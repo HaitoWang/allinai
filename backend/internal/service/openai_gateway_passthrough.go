@@ -581,6 +581,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 	body []byte,
 	token string,
 ) (*http.Request, error) {
+	body = s.prepareCodexQuotaOverdraftBody(ctx, account, IsOpenAIResponsesCompactPath(c), body)
 	targetURL := openaiPlatformAPIURL
 	switch account.Type {
 	case AccountTypeOAuth:

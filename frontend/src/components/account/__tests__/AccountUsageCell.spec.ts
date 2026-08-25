@@ -1441,4 +1441,44 @@ describe('AccountUsageCell', () => {
     expect(wrapper.text()).not.toContain('7d S')
     expect(wrapper.text()).not.toContain('7d F')
   })
+
+  it('OpenAI OAuth 会显示五次探测确认的限额状态', async () => {
+    getUsage.mockResolvedValue({
+      five_hour: {
+        utilization: 100,
+        resets_at: '2099-03-07T12:00:00Z',
+        remaining_seconds: 3600
+      },
+      seven_day: null,
+      codex_quota_overdraft: {
+        status: 'failed',
+        quota_window: '5h',
+        cycle_key: '5h:4076577600',
+        attempts: 5,
+        limit: 5,
+        model: 'gpt-5.5',
+        reason_code: 'quota_limited',
+        started_at: '2099-03-07T10:00:00Z',
+        tested_at: '2099-03-07T10:01:00Z',
+        recover_at: '2099-03-07T12:00:00Z'
+      }
+    })
+
+    const wrapper = mount(AccountUsageCell, {
+      props: {
+        account: makeAccount({ id: 2005, platform: 'openai', type: 'oauth', extra: {} })
+      },
+      global: {
+        stubs: {
+          UsageProgressBar: true,
+          AccountQuotaInfo: true
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('usage.overdraftProbeFailed')
+    expect(wrapper.text()).toContain('5/5 · 5h')
+  })
 })

@@ -225,6 +225,7 @@ func ProvideAccountUsageService(
 	identityCache IdentityCache,
 	tlsFPProfileService *TLSFingerprintProfileService,
 	openAIGatewayService *OpenAIGatewayService,
+	codexQuotaOverdraft *CodexQuotaOverdraftCoordinator,
 ) *AccountUsageService {
 	service := NewAccountUsageService(
 		accountRepo,
@@ -240,7 +241,34 @@ func ProvideAccountUsageService(
 		tlsFPProfileService,
 	)
 	service.agentIdentityWS = openAIGatewayService
+	service.SetCodexQuotaOverdraftCoordinator(codexQuotaOverdraft)
 	return service
+}
+
+func ProvideCodexQuotaOverdraftCoordinator(
+	accountRepo AccountRepository,
+	httpUpstream HTTPUpstream,
+	openAITokenProvider *OpenAITokenProvider,
+	tlsFPProfileService *TLSFingerprintProfileService,
+	cfg *config.Config,
+	tempUnschedCache TempUnschedCache,
+	runtimeBlocker AccountRuntimeBlocker,
+	rateLimitService *RateLimitService,
+) *CodexQuotaOverdraftCoordinator {
+	coordinator := NewCodexQuotaOverdraftCoordinator(
+		accountRepo,
+		httpUpstream,
+		openAITokenProvider,
+		tlsFPProfileService,
+		cfg,
+		tempUnschedCache,
+		runtimeBlocker,
+		rateLimitService,
+	)
+	if gateway, ok := runtimeBlocker.(*OpenAIGatewayService); ok {
+		gateway.SetCodexQuotaOverdraftCoordinator(coordinator)
+	}
+	return coordinator
 }
 
 func ProvideAccountTestService(
@@ -255,6 +283,7 @@ func ProvideAccountTestService(
 	openAIGatewayService *OpenAIGatewayService,
 	settingService *SettingService,
 	pluginManager *PluginManager,
+	codexQuotaOverdraft *CodexQuotaOverdraftCoordinator,
 ) *AccountTestService {
 	service := NewAccountTestService(
 		accountRepo,
@@ -269,6 +298,7 @@ func ProvideAccountTestService(
 	service.agentIdentityWS = openAIGatewayService
 	service.SetSettingService(settingService)
 	service.SetPluginManager(pluginManager)
+	service.SetCodexQuotaOverdraftCoordinator(codexQuotaOverdraft)
 	return service
 }
 
@@ -873,6 +903,7 @@ var ProviderSet = wire.NewSet(
 	ProvideClaudeTokenProvider,
 	NewAntigravityGatewayService,
 	ProvideRateLimitService,
+	ProvideCodexQuotaOverdraftCoordinator,
 	ProvideAccountUsageService,
 	ProvideAccountTestService,
 	ProvideUpstreamBillingProbeService,

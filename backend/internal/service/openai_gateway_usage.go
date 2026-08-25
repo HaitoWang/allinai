@@ -1068,15 +1068,37 @@ func (s *OpenAIGatewayService) updateCodexUsageSnapshot(ctx context.Context, acc
 	if len(updates) == 0 {
 		return
 	}
-	if !s.getCodexSnapshotThrottle().Allow(accountID, now) {
-		return
-	}
+	persistSnapshot := codexQuotaOverdraftSnapshotExhausted(updates) || s.getCodexSnapshotThrottle().Allow(accountID, now)
 
 	go func() {
 		updateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := s.accountRepo.UpdateExtra(updateCtx, accountID, updates); err == nil {
+		var account *Account
+		if !persistSnapshot && s.codexQuotaOverdraft != nil {
+			current, err := s.accountRepo.GetByID(updateCtx, accountID)
+			if err == nil && current != nil {
+				account = current
+				state, hasState := codexQuotaOverdraftStateFromAccount(current)
+				_, wasExhausted := codexQuotaOverdraftSignalFromAccount(current, state, now)
+				persistSnapshot = wasExhausted || hasState && state.Status != codexQuotaOverdraftProbeRecovered
+			}
+		}
+		if persistSnapshot {
+			if err := s.accountRepo.UpdateExtra(updateCtx, accountID, updates); err != nil {
+				return
+			}
 			notifyOpenAIAutoReset(accountID)
+		}
+		if s.codexQuotaOverdraft != nil {
+			if account == nil {
+				current, err := s.accountRepo.GetByID(updateCtx, accountID)
+				if err != nil || current == nil {
+					return
+				}
+				account = current
+			}
+			mergeAccountExtra(account, updates)
+			s.codexQuotaOverdraft.ObserveAccount(account, "")
 		}
 	}()
 }

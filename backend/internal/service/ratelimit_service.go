@@ -162,6 +162,10 @@ func (s *RateLimitService) ApplyAccountSchedulingThreshold(ctx context.Context, 
 	if !account.IsActive() || !account.Schedulable {
 		return false
 	}
+	if codexQuotaOverdraftSchedulingEnabled(ctx) && isCodexQuotaOverdraftAccount(account) &&
+		codexQuotaOverdraftSchedulingAllowed(account, time.Now().UTC()) {
+		return false
+	}
 
 	now := time.Now().UTC()
 	thresholds := s.settingService.GetAccountSchedulingThresholds(ctx)
@@ -189,7 +193,9 @@ func (s *RateLimitService) ApplyAccountSchedulingThreshold(ctx context.Context, 
 
 	account.TempUnschedulableUntil = cloneTimePtr(decision.Until)
 	account.TempUnschedulableReason = reason
-	s.notifyAccountSchedulingBlocked(account, *decision.Until, "account_scheduling_threshold")
+	if !CodexQuotaOverdraftEnabled() || !isCodexQuotaOverdraftAccount(account) {
+		s.notifyAccountSchedulingBlocked(account, *decision.Until, "account_scheduling_threshold")
+	}
 
 	if err := s.accountRepo.SetTempUnschedulable(ctx, account.ID, *decision.Until, reason); err != nil {
 		slog.Warn("account_scheduling_threshold_set_temp_unsched_failed",

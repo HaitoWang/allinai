@@ -73,6 +73,35 @@ type openAIAccountTestRepo struct {
 	setErrorMsg        string
 }
 
+type accountTestOverdraftCoordinatorStub struct {
+	observeCalls    int
+	observedAccount *Account
+	observedModel   string
+	handleCalls     int
+	handledAccount  *Account
+	handledModel    string
+	handleResult    bool
+}
+
+func (s *accountTestOverdraftCoordinatorStub) ObserveAccount(account *Account, preferredModel string) {
+	s.observeCalls++
+	s.observedAccount = account
+	s.observedModel = preferredModel
+}
+
+func (s *accountTestOverdraftCoordinatorStub) HandleQuota429(
+	_ context.Context,
+	account *Account,
+	_ http.Header,
+	_ []byte,
+	preferredModel string,
+) bool {
+	s.handleCalls++
+	s.handledAccount = account
+	s.handledModel = preferredModel
+	return s.handleResult
+}
+
 func (r *openAIAccountTestRepo) UpdateExtra(_ context.Context, _ int64, updates map[string]any) error {
 	r.updatedExtra = updates
 	return nil
@@ -135,6 +164,46 @@ func TestAccountTestService_OpenAISuccessPersistsSnapshotFromHeaders(t *testing.
 	require.Equal(t, 42.0, repo.updatedExtra["codex_5h_used_percent"])
 	require.Equal(t, 88.0, repo.updatedExtra["codex_7d_used_percent"])
 	require.Contains(t, recorder.Body.String(), "test_complete")
+}
+
+func TestAccountTestService_OpenAIOAuthOverdraftTestInjectsAndObservesSnapshot(t *testing.T) {
+	ctx, _ := newTestContext()
+	resp := newJSONResponse(http.StatusOK, "")
+	resp.Body = io.NopCloser(strings.NewReader("data: {\"type\":\"response.completed\"}\n\n"))
+	resp.Header.Set("x-codex-secondary-used-percent", "100")
+	resp.Header.Set("x-codex-secondary-reset-after-seconds", "18000")
+	resp.Header.Set("x-codex-secondary-window-minutes", "300")
+
+	repo := &openAIAccountTestRepo{}
+	upstream := &queuedHTTPUpstream{responses: []*http.Response{resp}}
+	coordinator := &accountTestOverdraftCoordinatorStub{}
+	svc := &AccountTestService{
+		accountRepo:         repo,
+		httpUpstream:        upstream,
+		cfg:                 &config.Config{Gateway: config.GatewayConfig{CodexQuotaOverdraftEnabled: true}},
+		codexQuotaOverdraft: coordinator,
+	}
+	account := &Account{
+		ID:          96,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeOAuth,
+		Concurrency: 1,
+		Credentials: map[string]any{"access_token": "test-token"},
+	}
+
+	err := svc.testOpenAIAccountConnection(ctx, account, "gpt-5.4", "", "")
+	require.NoError(t, err)
+	require.Len(t, upstream.requests, 1)
+	body, err := io.ReadAll(upstream.requests[0].Body)
+	require.NoError(t, err)
+	require.Equal(t, "user", gjson.GetBytes(body, "input.0.role").String())
+	require.Equal(t, "custom_tool_call", gjson.GetBytes(body, "input.1.type").String())
+	require.Equal(t, "custom_tool_call_output", gjson.GetBytes(body, "input.2.type").String())
+	require.Equal(t, gjson.GetBytes(body, "input.1.call_id").String(), gjson.GetBytes(body, "input.2.call_id").String())
+	require.Equal(t, 1, coordinator.observeCalls)
+	require.Same(t, account, coordinator.observedAccount)
+	require.Equal(t, "gpt-5.4", coordinator.observedModel)
+	require.Equal(t, 100.0, account.Extra["codex_5h_used_percent"])
 }
 
 func TestAccountTestService_OpenAIOAuthTestNormalizesGPT56Alias(t *testing.T) {
@@ -388,6 +457,56 @@ func TestAccountTestService_OpenAI429PersistsSnapshotAndRateLimitState(t *testin
 	require.Equal(t, account.ID, repo.clearedErrorID)
 	require.Equal(t, StatusActive, account.Status)
 	require.Empty(t, account.ErrorMessage)
+	require.NotNil(t, account.RateLimitResetAt)
+}
+
+func TestAccountTestService_OpenAIQuota429UsesOverdraftCoordinatorWithoutRateLimitWrite(t *testing.T) {
+	ctx, _ := newTestContext()
+	resp := newJSONResponse(http.StatusTooManyRequests, `{"error":{"type":"usage_limit_reached","message":"limit reached","resets_at":1777283883}}`)
+	resp.Header.Set("x-codex-secondary-used-percent", "100")
+	resp.Header.Set("x-codex-secondary-reset-after-seconds", "18000")
+	resp.Header.Set("x-codex-secondary-window-minutes", "300")
+
+	repo := &openAIAccountTestRepo{}
+	upstream := &queuedHTTPUpstream{responses: []*http.Response{resp}}
+	coordinator := &accountTestOverdraftCoordinatorStub{handleResult: true}
+	svc := &AccountTestService{
+		accountRepo:         repo,
+		httpUpstream:        upstream,
+		cfg:                 &config.Config{Gateway: config.GatewayConfig{CodexQuotaOverdraftEnabled: true}},
+		codexQuotaOverdraft: coordinator,
+	}
+	account := &Account{ID: 97, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Status: StatusActive, Concurrency: 1, Credentials: map[string]any{"access_token": "test-token"}}
+
+	err := svc.testOpenAIAccountConnection(ctx, account, "gpt-5.4", "", "")
+	require.Error(t, err)
+	require.Equal(t, 1, coordinator.handleCalls)
+	require.Same(t, account, coordinator.handledAccount)
+	require.Equal(t, "gpt-5.4", coordinator.handledModel)
+	require.Zero(t, repo.rateLimitedID)
+	require.Nil(t, repo.rateLimitedAt)
+	require.Nil(t, account.RateLimitResetAt)
+}
+
+func TestAccountTestService_OpenAI429FallsBackWhenOverdraftDoesNotHandle(t *testing.T) {
+	ctx, _ := newTestContext()
+	resp := newJSONResponse(http.StatusTooManyRequests, `{"error":{"type":"rate_limit_exceeded","message":"too many requests","resets_in_seconds":60}}`)
+	repo := &openAIAccountTestRepo{}
+	upstream := &queuedHTTPUpstream{responses: []*http.Response{resp}}
+	coordinator := &accountTestOverdraftCoordinatorStub{}
+	svc := &AccountTestService{
+		accountRepo:         repo,
+		httpUpstream:        upstream,
+		cfg:                 &config.Config{Gateway: config.GatewayConfig{CodexQuotaOverdraftEnabled: true}},
+		codexQuotaOverdraft: coordinator,
+	}
+	account := &Account{ID: 98, Platform: PlatformOpenAI, Type: AccountTypeOAuth, Status: StatusActive, Concurrency: 1, Credentials: map[string]any{"access_token": "test-token"}}
+
+	err := svc.testOpenAIAccountConnection(ctx, account, "gpt-5.4", "", "")
+	require.Error(t, err)
+	require.Equal(t, 1, coordinator.handleCalls)
+	require.Equal(t, account.ID, repo.rateLimitedID)
+	require.NotNil(t, repo.rateLimitedAt)
 	require.NotNil(t, account.RateLimitResetAt)
 }
 
