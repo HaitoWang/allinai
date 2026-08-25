@@ -516,6 +516,7 @@ func (s *OpenAIGatewayService) ensureOpenAIAlphaSearchAuthMetadata(ctx context.C
 		credentials[key] = value
 	}
 	credentials = NormalizeOpenAIPersonalAccessTokenCredentials(account, tokenInfo, credentials)
+	credentials = PreserveOpenAITeamCredentialOverrides(account, credentials)
 	account.Credentials = shallowCopyMap(credentials)
 	if s.accountRepo != nil {
 		if err := persistAccountCredentials(ctx, s.accountRepo, account, credentials); err != nil {
